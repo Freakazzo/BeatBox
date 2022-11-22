@@ -5,6 +5,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.*;
 import java.util.ArrayList;
 
 public class BeatBox {
@@ -50,6 +51,14 @@ public class BeatBox {
         JButton downTempo = new JButton("Tempo down");
         downTempo.addActionListener((new MyDownTempoListener()));
         buttonBox.add(downTempo);
+
+        JButton serializelt = new JButton("Serializelt");
+        serializelt.addActionListener(new MySendListener());
+        buttonBox.add(serializelt);
+
+        JButton restore = new JButton("Restore");
+        restore.addActionListener(new MyReadListener());
+        buttonBox.add(restore);
 
         Box nameBox = new Box(BoxLayout.Y_AXIS);
         for (int i = 0; i < 16; i++) {
@@ -157,7 +166,7 @@ public class BeatBox {
     public class MyDownTempoListener implements ActionListener {
         public void actionPerformed(ActionEvent a) {
             float tempoFactor = sequencer.getTempoFactor();
-            sequencer.setTempoFactor((float) (tempoFactor * 0.97));//поэтому щелчком кнопкиой мыши можно изменить его на +/- 3%.
+            sequencer.setTempoFactor((float) (tempoFactor * 0.97));//поэтому щелчком кнопкой мыши можно изменить его на +/- 3%.
         }
     }
 
@@ -184,6 +193,51 @@ public class BeatBox {
             e.printStackTrace();
         }
         return event;
+    }
+
+    public class MySendListener implements ActionListener {
+        public void actionPerformed(ActionEvent a) {// Все это происходит при нажатии кнопки, после чего срабатывает ActionEvent.
+
+            boolean[] checkboxState = new boolean[256];// Создаём булев массив для хранения состояния каждого флажка.
+
+            for (int i = 0; i < 256; i++) {// Пробегаем через checkboxList(ArrayList, содержащий состояния флажков), считываем
+                JCheckBox check = (JCheckBox) checkboxList.get(i);//состояния и добавляем полученные значения в булев массив.
+                if (check.isSelected()) {
+                    checkboxState[i] = true;
+                }
+            }
+            try {// Это самая простая часть. Просто запишите/сериализуйте булев массив!
+                FileOutputStream fileStream = new FileOutputStream(new File("Checkbox.ser"));
+                ObjectOutputStream os = new ObjectOutputStream(fileStream);
+                os.writeObject(checkboxState);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    public class MyReadListener implements ActionListener {
+        public void actionPerformed(ActionEvent a) {
+            boolean[] checkboxState = null;
+            try {
+                FileInputStream fileIn = new FileInputStream(new File("Checkbox.ser"));
+                ObjectInputStream is = new ObjectInputStream(fileIn);
+                checkboxState = (boolean[]) is.readObject();// Считываем объект из файла и определяем его как булев массив(помните, readObject()
+                //возвращает ссылку на тип Object).
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+            for (int i = 0; i < 256; i++) {// Теперь восстанавливаем состояние каждого флажка в ArrayList, содержащий объекты
+                JCheckBox check = (JCheckBox) checkboxList.get(i);//JCheckBox(checkboxList).
+                if (checkboxState[i]) {
+                    check.setSelected(true);
+                } else {
+                    check.setSelected(false);
+                }
+            }
+            sequencer.stop();// Здесь мы останавливаем проигрывание мелодии и восстанавливаем последовательность, используя
+            buildTrackAndStart();//новые состояния флажков в ArrayList.
+        }
     }
 
 }
